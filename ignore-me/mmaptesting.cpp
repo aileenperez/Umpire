@@ -10,17 +10,17 @@
 class MapMemory
 {
 public:
-	// data members
+    // data members
     FILE *fd;
     void *ADDRESS;
     int SIZE;
-	// constructor
+    // constructor
     MapMemory(int size);
     // deconstuctor
     ~MapMemory();
 
-	// method
-	void allocate(int size);
+    // method
+    void allocate();
     void deallocate();
 
 private:
@@ -30,7 +30,8 @@ private:
 // constructor definition
 MapMemory::MapMemory(int size)
 {
-    allocate(size);
+    SIZE = 4096 * size;
+    allocate();
 }
 // deconstructor definition
 MapMemory::~MapMemory()
@@ -38,15 +39,18 @@ MapMemory::~MapMemory()
     deallocate();
 }
 
-// method definition
-void MapMemory::allocate(int size)
+void MapMemory::allocate()
 {
-    fd = fopen("afile.txt", "wr");
-    ftruncate(fileno(fd), 4096*size);
-    fseek(fd, 0L, SEEK_END);
-    SIZE = ftell(fd);
+    int fd = open("./aFile", O_RDWR | O_CREAT, S_IRWXU);
+    if(fd == -1)
+    {
+	perror("Error: ")
+	printf("Error Value: %s\n", )
+    }
+    truncate("./aFile", SIZE);
 
-    ADDRESS = mmap(NULL, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    ADDRESS = mmap(NULL, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    close(fd);
 };
 
 void MapMemory::deallocate()
@@ -57,9 +61,8 @@ void MapMemory::deallocate()
 
 int main()
 {
-	// constructor called automatically when creating a class variable (object)
-	MapMemory map(1);
+    MapMemory map(1);
 
     std::cout << &map.ADDRESS << " ";
-	return 0;
+    return 0;
 }
