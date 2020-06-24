@@ -11,10 +11,10 @@ public:
     void* ADDRESS;
     int SIZE;
 
-    MapMemory(int size);
-    ~MapMemory();
+    MapMemory::MapMemory();
+    MapMemory::~MapMemory();
 
-    void allocate();
+    void* allocate(int size);
     void deallocate();
 
 private:
@@ -23,27 +23,30 @@ private:
     int demap;
 };
 
-MapMemory::MapMemory(int size)
+MapMemory::MapMemory()
 {
-    SIZE = sysconf(_SC_PAGE_SIZE) * size;
-    allocate();
+    fd = open("./aFile", O_RDWR | O_CREAT, S_IRWXU);
+    if(fd == -1) { std::cerr << "Error: " << strerror(errno) << '\n'; }
+
+    SIZE = sysconf(_SC_PAGE_SIZE);
 }
 
 MapMemory::~MapMemory()
 {
-    deallocate();
+
 }
 
-void MapMemory::allocate()
+void* MapMemory::allocate(int size)
 {
-    fd = open("./aFile", O_RDWR | O_CREAT, S_IRWXU);
-    if(fd == -1) { std::cerr << "Error: " << strerror(errno) << '\n'; }
+    SIZE = SIZE * (size + 1);
 
     truncated = truncate("./aFile", SIZE);
     if(truncated == -1) { std::cerr << "Error: " << strerror(errno) << '\n'; }
 
     ADDRESS = mmap(NULL, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if(ADDRESS == MAP_FAILED) { std::cerr << "Error: " << strerror(errno) << '\n'; }
+
+    return ADDRESS;
 };
 
 void MapMemory::deallocate()
@@ -60,8 +63,8 @@ void MapMemory::deallocate()
 
 int main()
 {
-    MapMemory map(1);
+    MapMemory map;
 
-    std::cout << map.ADDRESS << "\n";
+    std::cout << map.allocate(1) << "\n";
     return 0;
 }
