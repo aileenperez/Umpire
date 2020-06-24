@@ -1,39 +1,34 @@
 #include <iostream>
-#include <fstream>
-#include <sys/types.h>
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <errno.h>
+#include <string.h>
 
-// class definition
 class MapMemory
 {
 public:
-    // data members
-    FILE *fd;
-    void *ADDRESS;
+    void* ADDRESS;
     int SIZE;
-    // constructor
+
     MapMemory(int size);
-    // deconstuctor
     ~MapMemory();
 
-    // method
     void allocate();
     void deallocate();
 
 private:
-
+    int fd;
+    int truncated;
+    int demap;
 };
 
-// constructor definition
 MapMemory::MapMemory(int size)
 {
     SIZE = 4096 * size;
     allocate();
 }
-// deconstructor definition
+
 MapMemory::~MapMemory()
 {
     deallocate();
@@ -41,28 +36,32 @@ MapMemory::~MapMemory()
 
 void MapMemory::allocate()
 {
-    int fd = open("./aFile", O_RDWR | O_CREAT, S_IRWXU);
-    if(fd == -1)
-    {
-	perror("Error: ")
-	printf("Error Value: %s\n", )
-    }
-    truncate("./aFile", SIZE);
+    fd = open("./aFile", O_RDWR | O_CREAT, S_IRWXU);
+    if(fd == -1) { std::cerr << "Error: " << strerror(errno) << '\n'; }
 
+    truncated = truncate("./aFile", SIZE);
+    if(truncated == -1) { std::cerr << "Error: " << strerror(errno) << '\n'; }
+    
     ADDRESS = mmap(NULL, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    close(fd);
+    if(ADDRESS == MAP_FAILED) { std::cerr << "Error: " << strerror(errno) << '\n'; }
 };
 
 void MapMemory::deallocate()
 {
-    //manmap
-    remove("myfile.txt");
+    int demap = munmap(ADDRESS, SIZE);
+    if(demap == -1) { std::cerr << "Error: " << strerror(errno) << '\n'; }
+
+    truncated = truncate("./aFile", 0);
+    if(truncated == -1) { std::cerr << "Error: " << strerror(errno) << '\n'; }
+
+    close(fd);
+    remove("./aFile");
 };
 
 int main()
 {
     MapMemory map(1);
 
-    std::cout << &map.ADDRESS << " ";
+    std::cout << map.ADDRESS << "\n";
     return 0;
 }
