@@ -14,7 +14,7 @@ public:
     MapMemory();
     ~MapMemory();
 
-    void* allocate(int size);
+    void allocate(int size);
     void deallocate();
 
 private:
@@ -30,7 +30,12 @@ MapMemory::MapMemory()
 
     // Set page size to computer specific
     SIZE = sysconf(_SC_PAGE_SIZE);
-    ADDRESS = NULL;
+
+    truncated = truncate("./aFile", SIZE);
+    if(truncated == -1) { std::cerr << "Error: " << strerror(errno) << '\n'; }
+
+    ADDRESS = mmap(NULL, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if(ADDRESS == MAP_FAILED) { std::cerr << "Error: " << strerror(errno) << '\n'; }
 }
 
 MapMemory::~MapMemory()
@@ -38,7 +43,7 @@ MapMemory::~MapMemory()
 
 }
 
-void* MapMemory::allocate(int size)
+void MapMemory::allocate(int size)
 {
     // Set wanted page size to be the size of the length * the desired amount
     SIZE = SIZE * (size + 1);
@@ -49,7 +54,6 @@ void* MapMemory::allocate(int size)
     ADDRESS = mmap(ADDRESS, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if(ADDRESS == MAP_FAILED) { std::cerr << "Error: " << strerror(errno) << '\n'; }
 
-    return ADDRESS;
 };
 
 void MapMemory::deallocate()
@@ -68,8 +72,8 @@ int main()
 {
     MapMemory map;
 
-    std::cout << "Map Address: "<< map.allocate(1) << " Size: "<< map.SIZE << "\n";
-
-    std::cout << "Map Address: "<< map.allocate(1) << " Size: "<< map.SIZE << "\n";
+    std::cout << "Map Address: "<< map.ADDRESS << " Size: "<< map.SIZE << "\n";
+    map.allocate(1);
+    std::cout << "Map Address: "<< map.ADDRESS << " Size: "<< map.SIZE << "\n";
     return 0;
 }
