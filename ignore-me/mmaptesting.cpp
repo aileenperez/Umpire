@@ -25,7 +25,7 @@ private:
 
 MapMemory::MapMemory(int size)
 {
-    SIZE = 4096 * size;
+    SIZE = sysconf(_SC_PAGE_SIZE) * size;
     allocate();
 }
 
@@ -41,7 +41,7 @@ void MapMemory::allocate()
 
     truncated = truncate("./aFile", SIZE);
     if(truncated == -1) { std::cerr << "Error: " << strerror(errno) << '\n'; }
-    
+
     ADDRESS = mmap(NULL, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if(ADDRESS == MAP_FAILED) { std::cerr << "Error: " << strerror(errno) << '\n'; }
 };
