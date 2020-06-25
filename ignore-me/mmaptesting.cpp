@@ -4,17 +4,18 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
-
+#include <sys/types.h>
+#include <sys/stat.h>
 class MapMemory
 {
 public:
     void* ADDRESS;
     int SIZE;
-
+    const char* file;
     MapMemory();
     ~MapMemory();
 
-    void allocate(int size);
+    void * allocate(int size);
     void deallocate();
 
 private:
@@ -26,61 +27,60 @@ private:
 
 MapMemory::MapMemory()
 {   // Create a file
-    fd = open("./file" + to_string(file_counter), O_RDWR | O_CREAT, S_IRWXU);
-    if(fd == -1) { std::cerr << "Error: " << strerror(errno) << '\n'; }
-    file_counter = 1;
-
-    // Set page size to computer specific
-    SIZE = sysconf(_SC_PAGE_SIZE);
-
-    truncated = truncate("./aFile", SIZE);
-    if(truncated == -1) { std::cerr << "Error: " << strerror(errno) << '\n'; }
-
-    ADDRESS = mmap(NULL, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if(ADDRESS == MAP_FAILED) { std::cerr << "Error: " << strerror(errno) << '\n'; }
-
-    std::cout << "Allocated 1 page of memory. Size: " << SIZE << "\n";
+    file_counter = 0;
+    ADDRESS = NULL;
+    SIZE = 0;
 }
 
 MapMemory::~MapMemory()
 {
-
+    for(int i = 0; i <= file_counter; i++)
+    {
+        remove(("./file" + std::to_string(i)).c_str());
+    }   
 }
 
-void MapMemory::allocate(int size)
-{
-
-    // Set wanted page size to be the size of the length * the desired amount
-    SIZE = (SIZE * size) + SIZE;
+void * MapMemory::allocate(int size)
+{   
     file_counter++;
+    file = ("./file" + std::to_string(file_counter)).c_str();
 
-    truncated = truncate("./aFile", SIZE);
-    if(truncated == -1) { std::cerr << "Error: " << strerror(errno) << '\n'; }
+    fd = open(file, O_RDWR | O_CREAT, S_IRWXU);
+    if(fd == -1) { std::cerr << "\nLook a Error: " << strerror(errno) << '\n'; }
 
-    ADDRESS = mmap(ADDRESS, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if(ADDRESS == MAP_FAILED) { std::cerr << "Error: " << strerror(errno) << '\n'; }
+    truncated = truncate(file, sysconf(_SC_PAGE_SIZE) * size);
+    if(truncated == -1) { std::cerr << "\nLook a Error: " << strerror(errno) << '\n'; }
 
+    ADDRESS = mmap(ADDRESS, sysconf(_SC_PAGE_SIZE) * size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if(ADDRESS == MAP_FAILED) { std::cerr << "\nLook a Error: " << strerror(errno) << '\n'; }
+
+    struct stat srcinfo;
+    stat(file, &srcinfo);
+
+    std::cout << "\nMap Address: " << ADDRESS << "\nSize: " << srcinfo.st_size;
+
+    return ADDRESS;
 };
 
 void MapMemory::deallocate()
 {
     int demap = munmap(ADDRESS, SIZE);
-    if(demap == -1) { std::cerr << "Error: " << strerror(errno) << '\n'; }
+    if(demap == -1) { std::cerr << "Look a Error: " << strerror(errno) << '\n'; }
 
     truncated = truncate("./aFile", 0);
-    if(truncated == -1) { std::cerr << "Error: " << strerror(errno) << '\n'; }
-
-    close(fd);
-    remove("./aFile");
+    if(truncated == -1) { std::cerr << "Look a Error: " << strerror(errno) << '\n'; }
 };
 
 int main()
 {
     MapMemory map;
+    
+    // User needs the pointer location and file name
 
-    std::cout << "Map Address: "<< map.ADDRESS << " Size: "<< map.SIZE << "\n";
+    std::cout << "\nUser Returned Map Address: " << map.allocate(1);
+
     // New File of allocation
-    map.allocate(1);
-    std::cout << "Map Address: "<< map.ADDRESS << " Size: "<< map.SIZE << "\n";
+    std::cout << "\nUser Returned Map Address: " << map.allocate(1);
+
     return 0;
 }
